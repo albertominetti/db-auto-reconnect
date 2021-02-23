@@ -42,7 +42,8 @@ class DbAutoReconnectApplicationTests {
         assertThat(getEntityIdsFromDb(), hasSize(2));
         assertThat(isHealthy(), is(true));
     }
-    ...
+    
+    /* omitted */
 
     @SneakyThrows
     private boolean isHealthy() {
