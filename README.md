@@ -1,5 +1,33 @@
+# Database auto-reconnection
 
-## How to run MySQL in a docker container
+The purpose of this little project is to validate the capabilities
+of [HikariCP](https://github.com/brettwooldridge/HikariCP) library included by default
+in [spring-boot-data-jpa](https://spring.io/guides/gs/accessing-data-jpa/).
+
+![HikariCP maven tree](hikariCP-tree.png)
+
+### Analyzed points:
+
+* Is there any custom configuration needed?
+* How timeout works?
+* How does it affect the health check?
+* Can it work with liquibase?
+* What happen if the connection pool is flooded of request during the database outage?
+
+## How to run locally?
+
+With the profile `h2` the service starts with an embedded h2 database.
+
+    mvn clean package -DskipTests && java -jar ./target/*.jar -Dspring.profiles.active=h2
+
+It runs liquibase and all the endpoint are available, but you cannot shutdown and restart the database to provide the
+auto reconnection.
+
+The best way to test locally is with a real database, or even better with a dockerized one.
+
+### How to run MySQL in a docker container
+
+Because I always forget how to run the MySQL container, let's keep here the commands to run MySQL in a docker container.
 
 ```
 docker run --name=mysql01 -e MYSQL_ROOT_PASSWORD=password -d mysql/mysql-server:latest
@@ -10,11 +38,29 @@ ALTER USER 'root'@'%' IDENTIFIED BY 'password';
 
 ## Integration test with Testcontainers
 
+Here an extensive test to prove the all the expectations:
+
+1. the testing library `Testcontainers` allows to simplify the manual steps of setup of docker database
+1. the `JpaRepository` inserts two rows in the database, they are retrieved later
+1. the `isHealthy()` method checks if the service is healthy using the endpoint exposed
+   by [spring-boot-actuators](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-health)
+1. it retrieves the previously inserted rows
+1. now the container is paused. If you stop and restart the port may change, and the service is no more able to connect.
+1. the `isHealthy()` shows that the service is not more healthy
+1. the next 20 requests for retrieving the rows run in parallel to completely fill the connection pool
+1. the `isHealthy()` shows that the service is still not healthy
+1. as soon as the container is unpaused, the service is again healty
+1. it can connect to the database to retrieve the rows
+
 ```java
 
 @Testcontainers
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 class DbAutoReconnectApplicationTests {
+
+    @Container
+    private static final PostgreSQLContainer db = new PostgreSQLContainer("postgres:11.1");
+
     @Test
     void contextLoads() throws InterruptedException {
         log.info("Starting tests on port {}.", port);
@@ -42,7 +88,7 @@ class DbAutoReconnectApplicationTests {
         assertThat(getEntityIdsFromDb(), hasSize(2));
         assertThat(isHealthy(), is(true));
     }
-    
+
     /* omitted */
 
     @SneakyThrows
@@ -67,7 +113,7 @@ class DbAutoReconnectApplicationTests {
 }
 ```
 
-### Test output:
+Output in my local machine:
 
 ```
 .   ____          _            __ _ _
