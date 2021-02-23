@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: Test DB auto reconnect
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: password
+
+
+management:
+  endpoint:
+    health:
+      show-details: always
+

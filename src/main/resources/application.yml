@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: Test DB auto reconnect
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: jdbc:mysql://192.168.99.100:3306/db # production database
+    username: root
+    password: password
+    hikari:
+      connection-timeout: 500
+      maximum-pool-size: 5
+      validation-timeout: 1000
+      idle-timeout: 1000
+      initialization-fail-timeout: 1000
+  liquibase:
+    change-log: classpath:liquibase/db.changelog-master.xml
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
