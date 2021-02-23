@@ -18,7 +18,7 @@ in [spring-boot-data-jpa](https://spring.io/guides/gs/accessing-data-jpa/).
 
 With the profile `h2` the service starts with an embedded h2 database.
 
-    mvn clean package -DskipTests && java -jar ./target/*.jar -Dspring.profiles.active=h2
+    mvn clean package -DskipTests && java -jar ./target/*.jar --spring.profiles.active=h2
 
 It runs liquibase and all the endpoint are available, but you cannot shutdown and restart the database to provide the
 auto reconnection.
