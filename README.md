@@ -25,15 +25,12 @@ auto reconnection.
 
 The best way to test locally is with a real database, or even better with a dockerized one.
 
-### How to run MySQL in a docker container
+### How to run Postgre in a docker container
 
-Because I always forget how to run the MySQL container, let's keep here the commands to run MySQL in a docker container.
+Because I always forget how to run the PostgreSQL container, let's keep here the commands to run it in a docker container.
 
 ```
-docker run --name=mysql01 -e MYSQL_ROOT_PASSWORD=password -d mysql/mysql-server:latest
-docker exec -it mysql01 mysql -uroot -p
-
-ALTER USER 'root'@'%' IDENTIFIED BY 'password';
+docker run --name postgres01 -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
 ```
 
 ## Integration test with Testcontainers
@@ -58,58 +55,58 @@ Here an extensive test to prove the all the expectations:
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 class DbAutoReconnectApplicationTests {
 
-    @Container
-    private static final PostgreSQLContainer db = new PostgreSQLContainer("postgres:11.1");
+   @Container
+   private static final PostgreSQLContainer db = new PostgreSQLContainer("postgres:11.1");
 
-    @Test
-    void contextLoads() throws InterruptedException {
-        log.info("Starting tests on port {}.", port);
+   @Test
+   void contextLoads() {
+      log.info("Starting tests on port {}.", port);
 
-        log.info("Saving two rows in the database...");
-        repo.save(new DbEntity("first"));
-        repo.save(new DbEntity("second"));
-        log.info(" ... done: {}", repo.findAll());
+      log.info("Saving two rows in the database...");
+      repo.save(new DbEntity("first"));
+      repo.save(new DbEntity("second"));
+      log.info(" ... done: {}", repo.findAll());
 
-        assertThat(isHealthy(), is(true));
-        assertThat(getEntityIdsFromDb(), hasSize(2));
+      assertThat(isHealthy(), is(true));
+      assertThat(getEntityIdsFromDb(), hasSize(2));
 
-        pause(db);
+      pause(db);
 
-        assertThat(isHealthy(), is(false));
-        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "20");
-        IntStream.range(1, 20).parallel().forEach(
-                i -> assertThat(getEntityIdsFromDb(), is(nullValue()))
-        );
-        assertThat(isHealthy(), is(false));
+      assertThat(isHealthy(), is(false));
+      System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "20");
+      IntStream.range(1, 20).parallel().forEach(
+              i -> assertThat(getEntityIdsFromDb(), is(nullValue()))
+      );
+      assertThat(isHealthy(), is(false));
 
-        unpause(db);
+      unpause(db);
 
-        assertThat(isHealthy(), is(true));
-        assertThat(getEntityIdsFromDb(), hasSize(2));
-        assertThat(isHealthy(), is(true));
-    }
+      assertThat(isHealthy(), is(true));
+      assertThat(getEntityIdsFromDb(), hasSize(2));
+      assertThat(isHealthy(), is(true));
+   }
 
-    /* omitted */
+   /* omitted */
 
-    @SneakyThrows
-    private boolean isHealthy() {
-        var healthEntity = template.getForEntity("http://localhost:{port}/actuator/health", StatusWrapper.class, port);
-        log.info("Health check http status is {} and status is {}", healthEntity.getStatusCode(), healthEntity.getBody().getStatus());
-        if (healthEntity.getBody().getComponent() != null) {
-            log.info(" ... and database details: {}", healthEntity.getBody().getComponent().getDb().getDetails());
-        }
-        return healthEntity.getStatusCode().is2xxSuccessful();
-    }
+   @SneakyThrows
+   private boolean isHealthy() {
+      var healthEntity = template.getForEntity("http://localhost:{port}/actuator/health", StatusWrapper.class, port);
+      log.info("Health check http status is {} and status is {}", healthEntity.getStatusCode(), healthEntity.getBody().getStatus());
+      if (healthEntity.getBody().getComponent() != null) {
+         log.info(" ... and database details: {}", healthEntity.getBody().getComponent().getDb().getDetails());
+      }
+      return healthEntity.getStatusCode().is2xxSuccessful();
+   }
 
-    @SneakyThrows
-    private List<String> getEntityIdsFromDb() {
-        var idsEntity = template.getForEntity("http://localhost:{port}/entities", String.class, port);
-        log.info("Query for database entities has status {}", idsEntity.getStatusCode());
-        log.info(" ... and entity body: {}", idsEntity.getBody());
-        TypeReference<List<String>> listOfStringType = new TypeReference<>() {
-        };
-        return idsEntity.getStatusCode().is2xxSuccessful() ? objectMapper.readValue(idsEntity.getBody(), listOfStringType) : null;
-    }
+   @SneakyThrows
+   private List<String> getEntityIdsFromDb() {
+      var idsEntity = template.getForEntity("http://localhost:{port}/entities", String.class, port);
+      log.info("Query for database entities has status {}", idsEntity.getStatusCode());
+      log.info(" ... and entity body: {}", idsEntity.getBody());
+      TypeReference<List<String>> listOfStringType = new TypeReference<>() {
+      };
+      return idsEntity.getStatusCode().is2xxSuccessful() ? objectMapper.readValue(idsEntity.getBody(), listOfStringType) : null;
+   }
 }
 ```
 

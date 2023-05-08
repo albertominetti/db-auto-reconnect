@@ -6,9 +6,9 @@ spring:
     hibernate:
       ddl-auto: none
   datasource:
-    url: jdbc:mysql://192.168.99.100:3306/db # production database
-    username: root
-    password: password
+    url: jdbc:postgresql://localhost:5432/postgres # production database
+    username: postgres
+    password: mysecretpassword
     hikari:
       connection-timeout: 500
       maximum-pool-size: 5
